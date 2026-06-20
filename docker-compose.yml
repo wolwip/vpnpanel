@@ -13,8 +13,8 @@ services:
       # Таймаут TCP-проверки в мс
       MONITOR_TIMEOUT: "3000"
       # Telegram уведомления (опционально)
-      # TG_TOKEN: "1234567890:AAxxxxxx"
-      # TG_CHAT: "-100xxxxxxxxx"
+      TG_TOKEN: "8898925883:AAH-aBXWHTzJ7uWe6dw8zdxZX9wM4nCnOl4"
+      TG_CHAT: "369568733"
     volumes:
       - ./data:/app/data
     restart: unless-stopped
