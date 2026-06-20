@@ -1,0 +1,14 @@
+{
+  "name": "vpnpanel",
+  "version": "1.0.0",
+  "description": "Self-hosted VPN infrastructure panel",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

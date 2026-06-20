@@ -1,0 +1,25 @@
+services:
+  vpnpanel:
+    build: .
+    container_name: vpnpanel
+    ports:
+      - "3000:3000"
+    environment:
+      # Пароль по умолчанию при первом запуске (потом меняется в настройках)
+      ADMIN_PASSWORD: "_Вштфьщ000_111_"
+      DATA_DIR: "/app/data"
+      # Интервал мониторинга в минутах
+      MONITOR_INTERVAL: "5"
+      # Таймаут TCP-проверки в мс
+      MONITOR_TIMEOUT: "3000"
+      # Telegram уведомления (опционально)
+      # TG_TOKEN: "1234567890:AAxxxxxx"
+      # TG_CHAT: "-100xxxxxxxxx"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/auth/check').then(r=>r.ok?process.exit(0):process.exit(1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
