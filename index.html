@@ -336,7 +336,12 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 
     <!-- Payments -->
     <div class="page" id="page-payments">
-      <div class="page-title">Все платежи</div>
+      <div class="page-title">Все платежи
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary btn-sm" onclick="exportCsv('payments')">⬇ Платежи CSV</button>
+          <button class="btn btn-secondary btn-sm" onclick="exportCsv('assets')">⬇ Активы CSV</button>
+        </div>
+      </div>
       <div class="stats-grid" id="pay-stats"></div>
       <div class="table-wrap">
         <div class="table-toolbar">
@@ -452,6 +457,19 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       </div>
       <div class="form-row"><label>Дата</label><input class="form-input" type="datetime-local" id="pay-date"></div>
       <div class="form-row"><label>Заметка</label><input class="form-input" id="pay-note" placeholder="Описание платежа"></div>
+      <div class="form-row">
+        <label>Сдвинуть срок оплаты после добавления</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select class="form-input" id="pay-shift" style="width:180px">
+            <option value="">— не сдвигать —</option>
+            <option value="m1">+ 1 месяц</option>
+            <option value="m3">+ 3 месяца</option>
+            <option value="m6">+ 6 месяцев</option>
+            <option value="y1">+ 1 год</option>
+            <option value="y2">+ 2 года</option>
+          </select>
+        </div>
+      </div>
       <button class="btn btn-primary btn-sm" onclick="addPayment()" style="margin-bottom:12px">+ Добавить платёж</button>
       <div id="modal-payments-list" class="payments-list"></div>
     </div>
@@ -877,12 +895,21 @@ async function addPayment() {
   const assetId = document.getElementById('pay-asset-id').value;
   const amount = parseFloat(document.getElementById('pay-amount').value);
   if (!amount || amount <= 0) { toast('Введите сумму'); return; }
-  const body = { asset_id: assetId, amount, currency: document.getElementById('pay-currency').value, paid_at: document.getElementById('pay-date').value, note: document.getElementById('pay-note').value.trim() };
+  const shift = document.getElementById('pay-shift').value;
+  const body = {
+    asset_id: assetId, amount,
+    currency: document.getElementById('pay-currency').value,
+    paid_at: document.getElementById('pay-date').value,
+    note: document.getElementById('pay-note').value.trim(),
+    shift_months: shift.startsWith('m') ? parseInt(shift.slice(1)) : 0,
+    shift_years:  shift.startsWith('y') ? parseInt(shift.slice(1)) : 0,
+  };
   await api('/api/payments', { method: 'POST', body: JSON.stringify(body) });
   await load();
   const asset = assets.find(a => a.id === assetId);
   document.getElementById('pay-amount').value = '';
   document.getElementById('pay-note').value = '';
+  document.getElementById('pay-shift').value = '';
   renderPaymentList(asset);
   toast('Платёж добавлен');
 }
@@ -903,6 +930,10 @@ async function runMonitor() {
   await api('/api/monitor/run', { method: 'POST' });
   toast('Проверка запущена...');
   setTimeout(load, 8000);
+}
+
+function exportCsv(type) {
+  window.open('/api/export/' + type, '_blank');
 }
 
 async function changePassword() {

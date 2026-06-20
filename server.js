@@ -184,6 +184,38 @@ async function runMonitor() {
 // Первая проверка через 10 сек после старта, затем по интервалу
 setTimeout(() => { runMonitor(); setInterval(runMonitor, MONITOR_INTERVAL); }, 10_000);
 
+// ─── Уведомления об истечении ──────────────────────────────────────────────────
+async function runExpiryNotifications() {
+  const items = db.prepare(`
+    SELECT id, name, type, expires_at FROM assets
+    WHERE inactive=0 AND expires_at!='' AND expires_at IS NOT NULL
+    AND expires_at <= datetime('now', '+30 days')
+    AND expires_at > datetime('now')
+    ORDER BY expires_at ASC
+  `).all();
+
+  for (const item of items) {
+    const diff = Math.ceil((new Date(item.expires_at) - new Date()) / 86400000);
+    const eventId = "expiry_" + item.id + "_" + diff;
+    const already = db.prepare("SELECT 1 FROM sessions WHERE token=?").get(eventId);
+    if (already) continue;
+
+    const types = { server:"Сервер", domain:"Домен", cert:"Сертификат", vpn:"VPN", other:"Прочее" };
+    const emoji = diff <= 3 ? "🔴" : diff <= 7 ? "🟠" : "🟡";
+    await sendTelegram(
+      `${emoji} <b>Истекает через ${diff} дн.</b>
+` +
+      `${types[item.type]||item.type}: <b>${item.name}</b>
+` +
+      `Дата: ${new Date(item.expires_at).toLocaleDateString("ru")}`
+    );
+    // Помечаем что уведомление отправлено (храним в sessions как event-маркер)
+    db.prepare("INSERT OR IGNORE INTO sessions (token, created_at) VALUES (?,?)").run(eventId, now());
+  }
+}
+// Проверка истечений раз в 12 часов
+setTimeout(() => { runExpiryNotifications(); setInterval(runExpiryNotifications, 12 * 60 * 60 * 1000); }, 15_000);
+
 // ─── HTTP сервер ───────────────────────────────────────────────────────────────
 const server = createServer(async (req, res) => {
   const url    = new URL(req.url, "http://localhost");
@@ -353,6 +385,15 @@ const server = createServer(async (req, res) => {
     const id = uuid();
     db.prepare("INSERT INTO payments (id,asset_id,amount,currency,paid_at,note,created_at) VALUES (?,?,?,?,?,?,?)")
       .run(id, b.asset_id, Number(b.amount), b.currency||"USDT", b.paid_at||now(), b.note||"", now());
+    // Автосдвиг expires_at если передан период
+    if (b.shift_months || b.shift_years) {
+      const asset = db.prepare("SELECT expires_at FROM assets WHERE id=?").get(b.asset_id);
+      const base = asset?.expires_at ? new Date(asset.expires_at) : new Date();
+      if (b.shift_months) base.setMonth(base.getMonth() + Number(b.shift_months));
+      if (b.shift_years)  base.setFullYear(base.getFullYear() + Number(b.shift_years));
+      db.prepare("UPDATE assets SET expires_at=?, updated_at=? WHERE id=?")
+        .run(base.toISOString(), now(), b.asset_id);
+    }
     send(res, 201, db.prepare("SELECT * FROM payments WHERE id=?").get(id)); return;
   }
 
@@ -397,6 +438,34 @@ const server = createServer(async (req, res) => {
       WHERE a.type='server' AND a.inactive=0 AND m.status != 'up'
     `).all();
     send(res, 200, { totalAssets, byType, byCurrency, expiringSoon, monitorDown }); return;
+  }
+
+  // ── Экспорт CSV ───────────────────────────────────────────────────────────
+  if (p === "/api/export/assets" && method === "GET") {
+    const list = db.prepare("SELECT * FROM assets WHERE inactive=0 ORDER BY type,name").all();
+    const provs = db.prepare("SELECT * FROM providers").all();
+    const provMap = Object.fromEntries(provs.map(p => [p.id, p.name]));
+    const rows = [["Тип","Название","IP","Домен","Страна","Провайдер","Истекает","Заметка"]];
+    for (const a of list) {
+      rows.push([a.type, a.name, a.ip, a.domain, a.country, provMap[a.provider_id]||"", a.expires_at, a.note]);
+    }
+    const csv = rows.map(r => r.map(v => '"'+(v||"").replace(/"/g,'""')+'"').join(",")).join("\n");
+    res.writeHead(200, { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": "attachment; filename=assets.csv" });
+    res.end("\uFEFF" + csv); return;
+  }
+
+  if (p === "/api/export/payments" && method === "GET") {
+    const assets2 = db.prepare("SELECT id,name,type FROM assets").all();
+    const aMap = Object.fromEntries(assets2.map(a => [a.id, a]));
+    const pays = db.prepare("SELECT * FROM payments ORDER BY paid_at DESC").all();
+    const rows = [["Актив","Тип","Сумма","Валюта","Дата","Заметка"]];
+    for (const p of pays) {
+      const a = aMap[p.asset_id] || {};
+      rows.push([a.name||"", a.type||"", p.amount, p.currency, p.paid_at, p.note]);
+    }
+    const csv = rows.map(r => r.map(v => '"'+(v||"").replace(/"/g,'""')+'"').join(",")).join("\n");
+    res.writeHead(200, { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": "attachment; filename=payments.csv" });
+    res.end("\uFEFF" + csv); return;
   }
 
   send(res, 404, { error: "Not found" });
