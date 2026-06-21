@@ -521,12 +521,27 @@ async function doLogout() {
 }
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
+let cbRates = {}; // курсы ЦБ РФ
+
+async function loadCbRates() {
+  try {
+    const r = await fetch('https://www.cbr-xml-daily.ru/daily_json.js');
+    const data = await r.json();
+    cbRates = {
+      USD: data.Valute.USD.Value,
+      EUR: data.Valute.EUR.Value,
+      USDT: data.Valute.USD.Value, // USDT ≈ USD
+    };
+  } catch { cbRates = {}; }
+}
+
 async function load() {
   [assets, providers, stats] = await Promise.all([
     api('/api/assets'),
     api('/api/providers'),
     api('/api/stats'),
   ]);
+  await loadCbRates();
   // Загружаем историю мониторинга для серверов
   const servers = assets.filter(a => a.type === 'server');
   const histories = await Promise.all(servers.map(s => api('/api/monitor/' + s.id).catch(() => [])));
@@ -578,12 +593,47 @@ function renderDashboard() {
   const downCount = (stats.monitorDown || []).length;
   const soonCount = (stats.expiringSoon || []).length;
 
+  // Считаем итог в RUB
+  let totalRub = 0;
+  let totalRub30 = 0;
+  const hasRates = Object.keys(cbRates).length > 0;
+  const now30 = new Date(); now30.setDate(now30.getDate() - 30);
+
+  for (const c of byCurr) {
+    const rate = c.currency === 'RUB' ? 1 : (cbRates[c.currency] || 0);
+    totalRub += c.total * rate;
+  }
+  // За последние 30 дней
+  for (const a of assets) {
+    for (const p of (a.payments || [])) {
+      if (new Date(p.paid_at) >= now30) {
+        const rate = p.currency === 'RUB' ? 1 : (cbRates[p.currency] || 0);
+        totalRub30 += p.amount * rate;
+      }
+    }
+  }
+
+  const rateInfo = hasRates
+    ? `USD ${fmtAmount(cbRates.USD,'RUB')} · EUR ${fmtAmount(cbRates.EUR,'RUB')}`
+    : 'курс недоступен';
+
   document.getElementById('stats-grid').innerHTML = `
     <div class="stat-card"><div class="label">Всего активов</div><div class="value">${stats.totalAssets || 0}</div></div>
     <div class="stat-card"><div class="label">Серверов</div><div class="value" style="color:var(--accent)">${assets.filter(a=>a.type==='server'&&!a.inactive).length}</div></div>
     <div class="stat-card"><div class="label">Недоступно</div><div class="value" style="color:${downCount?'var(--red)':'var(--green)'}">${downCount}</div><div class="sub">мониторинг</div></div>
     <div class="stat-card"><div class="label">Истекает скоро</div><div class="value" style="color:${soonCount?'var(--yellow)':'var(--green)'}">${soonCount}</div><div class="sub">в течение 30 дней</div></div>
     ${byCurr.map(c=>`<div class="stat-card"><div class="label">Расходы ${c.currency}</div><div class="value" style="font-size:18px">${fmtAmount(c.total,c.currency)}</div><div class="sub">${c.cnt} платежей</div></div>`).join('')}
+    ${hasRates ? `
+    <div class="stat-card" style="border-color:var(--accent);background:rgba(47,129,247,0.05)">
+      <div class="label">Итого за всё время ₽</div>
+      <div class="value" style="font-size:18px;color:var(--accent)">${fmtAmount(totalRub,'RUB')}</div>
+      <div class="sub">${rateInfo}</div>
+    </div>
+    <div class="stat-card" style="border-color:var(--purple);background:rgba(188,140,255,0.05)">
+      <div class="label">За последние 30 дней ₽</div>
+      <div class="value" style="font-size:18px;color:var(--purple)">${fmtAmount(totalRub30,'RUB')}</div>
+      <div class="sub">курс ЦБ РФ на сегодня</div>
+    </div>` : ''}
   `;
 
   // Alerts
