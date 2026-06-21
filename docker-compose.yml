@@ -4,13 +4,11 @@ services:
     container_name: vpnpanel
     ports:
       - "127.0.0.1:3000:3000"
+    env_file: .env
     environment:
-      ADMIN_PASSWORD: "Admin2026"
       DATA_DIR: "/app/data"
       MONITOR_INTERVAL: "10"
       MONITOR_TIMEOUT: "3000"
-      TG_TOKEN: "8898925883:AAH-aBXWHTzJ7uWe6dw8zdxZX9wM4nCnOl4"
-      TG_CHAT: "369568733"
     volumes:
       - ./data:/app/data
     restart: unless-stopped
