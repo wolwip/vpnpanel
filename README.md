@@ -8,9 +8,7 @@ Self-hosted панель учёта VPN-инфраструктуры: серве
 
 ## 🚀 Быстрая установка (одна команда)
 
-```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/wolwip/vpnpanel/main/install.sh)
-```
+    bash <(curl -fsSL https://raw.githubusercontent.com/wolwip/vpnpanel/main/install.sh)
 
 Скрипт в интерактивном режиме спросит:
 - Папку установки и порт
@@ -26,12 +24,10 @@ bash <(curl -fsSL https://raw.githubusercontent.com/wolwip/vpnpanel/main/install
 
 ## 📦 Ручная установка
 
-```bash
-git clone https://github.com/wolwip/vpnpanel.git /opt/vpnpanel
-cd /opt/vpnpanel
-nano docker-compose.yml
-docker compose up -d
-```
+    git clone https://github.com/wolwip/vpnpanel.git /opt/vpnpanel
+    cd /opt/vpnpanel
+    nano docker-compose.yml
+    docker compose up -d
 
 ---
 
@@ -79,8 +75,8 @@ docker compose up -d
 - ✅ Сервер восстановился (down → up)
 - 🟡🟠🔴 Истечение срока за 30 / 7 / 3 дня
 
-Получение токена: @BotFather → /newbot
-Получение chat_id: написать боту /start, затем проверить:
+Получение токена: @BotFather → /newbot  
+Получение chat_id: написать боту /start, затем открыть:  
 https://api.telegram.org/bot<TOKEN>/getUpdates
 
 ---
@@ -93,18 +89,24 @@ https://api.telegram.org/bot<TOKEN>/getUpdates
         reverse_proxy localhost:3000
     }
 
+Затем:
+
+    systemctl restart caddy
+
 Caddy автоматически получит Let's Encrypt сертификат.
 
 ---
 
 ## 💾 Бэкап и восстановление
 
-Бэкап:
-    tar -czf vpnpanel-backup-$(date +%F).tar.gz /opt/vpnpanel/data
+Бэкап (все данные в папке data/):
+
+    tar -czf vpnpanel-backup.tar.gz /opt/vpnpanel/data
 
 Восстановление на новом сервере:
+
     git clone https://github.com/wolwip/vpnpanel.git /opt/vpnpanel
-    tar -xzf vpnpanel-backup-*.tar.gz -C /
+    tar -xzf vpnpanel-backup.tar.gz -C /
     cd /opt/vpnpanel && docker compose up -d
 
 ---
@@ -117,14 +119,14 @@ Caddy автоматически получит Let's Encrypt сертифика
 
 ---
 
-## 📁 Структура
+## 📁 Структура проекта
 
     vpnpanel/
-    ├── server.js           # Backend (Node.js)
-    ├── index.html          # Frontend (single-file SPA)
+    ├── server.js           # Backend (Node.js ~500 строк)
+    ├── index.html          # Frontend (single-file SPA, vanilla JS)
     ├── install.sh          # Интерактивный установщик
     ├── Dockerfile
     ├── docker-compose.yml
-    └── data/
-        ├── vpnpanel.sqlite
-        └── password.txt
+    └── data/               # Создаётся автоматически
+        ├── vpnpanel.sqlite     # База данных
+        └── password.txt        # Хэш пароля
