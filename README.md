@@ -1,147 +1,130 @@
-# VPN Panel
+# ⚡ VPN Panel
 
 Self-hosted панель учёта VPN-инфраструктуры: серверы, домены, сертификаты, провайдеры, платежи, мониторинг.
 
-**Стек:** Node.js 22 + SQLite (встроенный) + vanilla JS. Нет npm install, нет сборки.
+**Стек:** Node.js 22 + SQLite (встроенный) + vanilla JS. Нет npm install, нет сборки — один `docker compose up`.
 
 ---
 
-## Быстрый старт
+## 🚀 Быстрая установка (одна команда)
 
 ```bash
-# 1. Копируем файлы на сервер
-scp -r vpnpanel/ root@YOUR_SERVER:/opt/vpnpanel
+bash <(curl -fsSL https://raw.githubusercontent.com/wolwip/vpnpanel/main/install.sh)
+```
 
-# 2. На сервере
+Скрипт в интерактивном режиме спросит:
+- Папку установки и порт
+- Пароль администратора
+- Токен Telegram-бота для уведомлений (опционально)
+- Домен для HTTPS через Caddy + Let's Encrypt (опционально)
+- Интервал мониторинга серверов
+- Настроить ли автобэкап данных
+
+**Требования:** Ubuntu 22.04 / 24.04, root-доступ. Docker устанавливается автоматически.
+
+---
+
+## 📦 Ручная установка
+
+```bash
+git clone https://github.com/wolwip/vpnpanel.git /opt/vpnpanel
 cd /opt/vpnpanel
-
-# 3. Меняем пароль в docker-compose.yml (переменная ADMIN_PASSWORD)
 nano docker-compose.yml
-
-# 4. Запускаем
 docker compose up -d
-
-# 5. Открываем в браузере
-http://YOUR_SERVER_IP:3000
 ```
 
 ---
 
-## Переменные окружения
+## ⚙️ Переменные окружения
 
 | Переменная | По умолчанию | Описание |
 |---|---|---|
 | `ADMIN_PASSWORD` | `changeme` | Пароль при первом запуске |
-| `DATA_DIR` | `/app/data` | Путь к данным (БД + файл пароля) |
+| `DATA_DIR` | `/app/data` | Путь к данным |
 | `MONITOR_INTERVAL` | `5` | Интервал мониторинга (минуты) |
 | `MONITOR_TIMEOUT` | `3000` | Таймаут TCP-проверки (мс) |
-| `TG_TOKEN` | — | Токен Telegram-бота для уведомлений |
+| `TG_TOKEN` | — | Токен Telegram-бота |
 | `TG_CHAT` | — | Chat ID для уведомлений |
 
-> Пароль задаётся только **один раз** при первом запуске (записывается в `data/password.txt`).
-> При повторных запусках `ADMIN_PASSWORD` игнорируется — меняйте через настройки в интерфейсе.
+> Пароль задаётся только **один раз** при первом запуске (сохраняется в `data/password.txt`).
+> При повторных запусках `ADMIN_PASSWORD` игнорируется — меняйте через Настройки.
 
 ---
 
-## Telegram-уведомления
-
-1. Создайте бота через @BotFather → получите `TG_TOKEN`
-2. Добавьте бота в нужный чат/канал
-3. Получите `TG_CHAT`: напишите `/start` боту, откройте `https://api.telegram.org/bot<TOKEN>/getUpdates`
-4. Раскомментируйте и заполните переменные в `docker-compose.yml`
-5. `docker compose up -d`
-
-Бот уведомляет при смене статуса сервера: `up → down` и `down → up`.
-
----
-
-## Мониторинг серверов
-
-Панель делает TCP-соединение к `IP:PORT` каждые N минут.
-- По умолчанию порт **22** (SSH) — достаточно для проверки доступности
-- Можно указать любой открытый порт: 443, 8080, 54321 и т.д.
-- История хранится **48 часов**, показывается полоска uptime из 32 тиков
-
----
-
-## Типы активов
+## 📋 Типы активов
 
 | Тип | Описание |
 |---|---|
-| `server` | VPS/выделенный сервер. Мониторинг доступности |
-| `domain` | Доменное имя. Срок истечения |
-| `cert` | SSL-сертификат. Срок истечения |
+| `server` | VPS/выделенный сервер. TCP-мониторинг доступности |
+| `domain` | Доменное имя. Контроль срока истечения |
+| `cert` | SSL-сертификат. Контроль срока истечения |
 | `vpn` | VPN-сервис/протокол (VLESS, Hysteria2, ...) |
 | `other` | Всё остальное |
 
 ---
 
-## Платежи
+## 💳 Платежи
 
-Поддерживаемые валюты: **USDT, USD, EUR, RUB**.
-Статистика по каждой валюте отдельно на дашборде и в разделе Платежи.
-
----
-
-## Бэкап
-
-```bash
-# Всё хранится в папке data/ — достаточно её скопировать
-tar -czf vpnpanel-backup-$(date +%F).tar.gz /opt/vpnpanel/data
-
-# Cron: ежедневно в 3:00
-0 3 * * * tar -czf /backup/vpnpanel-$(date +\%F).tar.gz /opt/vpnpanel/data
-```
+- Валюты: **USDT, USD, EUR, RUB**
+- Автосдвиг даты истечения при добавлении платежа (+1/3/6 мес, +1/2 года)
+- Экспорт в CSV (активы и платежи)
+- Статистика расходов по валютам на дашборде
 
 ---
 
-## Обновление
+## 🔔 Уведомления Telegram
 
-```bash
-cd /opt/vpnpanel
-# Заменить server.js и index.html новыми версиями
-docker compose up -d --build
-```
+Бот отправляет уведомления:
+- 🔴 Сервер недоступен (up → down)
+- ✅ Сервер восстановился (down → up)
+- 🟡🟠🔴 Истечение срока за 30 / 7 / 3 дня
 
----
-
-## Структура файлов
-
-```
-vpnpanel/
-├── server.js       # Backend (Node.js, ~400 строк)
-├── index.html      # Frontend (single-file SPA)
-├── package.json    # Метаданные
-├── Dockerfile
-├── docker-compose.yml
-└── data/           # Создаётся автоматически
-    ├── vpnpanel.sqlite   # База данных
-    └── password.txt      # Хэш пароля
-```
+Получение токена: @BotFather → /newbot
+Получение chat_id: написать боту /start, затем проверить:
+https://api.telegram.org/bot<TOKEN>/getUpdates
 
 ---
 
-## Порты и безопасность
+## 🔒 HTTPS через Caddy
 
-По умолчанию панель слушает `0.0.0.0:3000`.
+Установите Caddy и создайте /etc/caddy/Caddyfile:
 
-**Рекомендуется** закрыть порт 3000 файрволом и поставить reverse proxy:
+    panel.example.com {
+        reverse_proxy localhost:3000
+    }
 
-```bash
-# Закрыть прямой доступ
-ufw delete allow 3000/tcp
+Caddy автоматически получит Let's Encrypt сертификат.
 
-# Nginx (пример)
-server {
-    listen 443 ssl;
-    server_name panel.example.com;
-    location / { proxy_pass http://127.0.0.1:3000; }
-}
-```
+---
 
-Или Caddy:
-```
-panel.example.com {
-    reverse_proxy 127.0.0.1:3000
-}
-```
+## 💾 Бэкап и восстановление
+
+Бэкап:
+    tar -czf vpnpanel-backup-$(date +%F).tar.gz /opt/vpnpanel/data
+
+Восстановление на новом сервере:
+    git clone https://github.com/wolwip/vpnpanel.git /opt/vpnpanel
+    tar -xzf vpnpanel-backup-*.tar.gz -C /
+    cd /opt/vpnpanel && docker compose up -d
+
+---
+
+## 🔄 Обновление
+
+    cd /opt/vpnpanel
+    git pull
+    docker compose up -d --build
+
+---
+
+## 📁 Структура
+
+    vpnpanel/
+    ├── server.js           # Backend (Node.js)
+    ├── index.html          # Frontend (single-file SPA)
+    ├── install.sh          # Интерактивный установщик
+    ├── Dockerfile
+    ├── docker-compose.yml
+    └── data/
+        ├── vpnpanel.sqlite
+        └── password.txt
