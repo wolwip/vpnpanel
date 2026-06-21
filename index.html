@@ -869,13 +869,16 @@ function openPaymentModal(assetId) {
   const asset = assets.find(a => a.id === assetId);
   document.getElementById('modal-pay-title').textContent = 'Платежи: ' + (asset?.name || '');
   document.getElementById('pay-asset-id').value = assetId;
-  document.getElementById('pay-amount').value = '';
-  document.getElementById('pay-currency').value = 'USDT';
+  document.getElementById('pay-asset-id').value = assetId;
+  // Восстанавливаем последние значения для этого актива
+  const savedPay = JSON.parse(localStorage.getItem('lastpay_' + assetId) || '{}');
+  document.getElementById('pay-amount').value = savedPay.amount || '';
+  document.getElementById('pay-currency').value = savedPay.currency || 'USDT';
   const now = new Date();
   now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
   document.getElementById('pay-date').value = now.toISOString().slice(0,16);
   document.getElementById('pay-note').value = '';
-  renderPaymentList(asset);
+  document.getElementById('pay-shift').value = savedPay.shift || '';
   document.getElementById('modal-payment').style.display = 'flex';
 }
 
@@ -905,6 +908,12 @@ async function addPayment() {
     shift_years:  shift.startsWith('y') ? parseInt(shift.slice(1)) : 0,
   };
   await api('/api/payments', { method: 'POST', body: JSON.stringify(body) });
+  // Сохраняем последние значения для этого актива
+  localStorage.setItem('lastpay_' + assetId, JSON.stringify({
+    amount: document.getElementById('pay-amount').value,
+    currency: document.getElementById('pay-currency').value,
+    shift: document.getElementById('pay-shift').value,
+  }));
   await load();
   const asset = assets.find(a => a.id === assetId);
   document.getElementById('pay-amount').value = '';
