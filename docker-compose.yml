@@ -9,7 +9,7 @@ services:
       ADMIN_PASSWORD: "_Вштфьщ000_111_"
       DATA_DIR: "/app/data"
       # Интервал мониторинга в минутах
-      MONITOR_INTERVAL: "5"
+      MONITOR_INTERVAL: "10"
       # Таймаут TCP-проверки в мс
       MONITOR_TIMEOUT: "3000"
       # Telegram уведомления (опционально)
