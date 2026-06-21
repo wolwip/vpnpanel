@@ -21,6 +21,23 @@
   --orange: #ffa657;
   --radius: 8px;
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --input-bg: #21262d;
+}
+[data-theme="light"] {
+  --bg: #f6f8fa;
+  --bg2: #ffffff;
+  --bg3: #f0f2f5;
+  --border: #d0d7de;
+  --text: #1f2328;
+  --text2: #656d76;
+  --accent: #0969da;
+  --accent2: #0550ae;
+  --green: #1a7f37;
+  --red: #d1242f;
+  --yellow: #9a6700;
+  --purple: #8250df;
+  --orange: #bc4c00;
+  --input-bg: #ffffff;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; min-height: 100vh; }
@@ -172,6 +189,14 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* Theme toggle */
+.theme-toggle { position:relative; display:inline-block; width:36px; height:20px; cursor:pointer; }
+.theme-toggle input { opacity:0; width:0; height:0; }
+.theme-slider { position:absolute; inset:0; background:var(--bg3); border:1px solid var(--border); border-radius:20px; transition:0.2s; }
+.theme-slider:before { content:""; position:absolute; width:14px; height:14px; left:2px; top:2px; background:var(--text2); border-radius:50%; transition:0.2s; }
+input:checked + .theme-slider { background:var(--accent); border-color:var(--accent); }
+input:checked + .theme-slider:before { transform:translateX(16px); background:#fff; }
 </style>
 </head>
 <body>
@@ -239,6 +264,13 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       </div>
     </nav>
     <div class="sidebar-footer">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <span style="font-size:12px;color:var(--text2)">Тёмная тема</span>
+        <label class="theme-toggle">
+          <input type="checkbox" id="theme-checkbox" onchange="toggleTheme(this.checked)">
+          <span class="theme-slider"></span>
+        </label>
+      </div>
       <button class="btn-logout" onclick="doLogout()">Выйти</button>
     </div>
   </aside>
@@ -486,7 +518,21 @@ let currentPage = 'dashboard';
 let monitorHistory = {}; // asset_id -> []
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
+function toggleTheme(isDark) {
+  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  localStorage.setItem('theme', isDark ? 'dark' : 'light');
+}
+
+function applyTheme() {
+  const saved = localStorage.getItem('theme') || 'dark';
+  const isDark = saved === 'dark';
+  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  const cb = document.getElementById('theme-checkbox');
+  if (cb) cb.checked = isDark;
+}
+
 async function init() {
+  applyTheme();
   const r = await api('/api/auth/check');
   if (r.ok) showApp();
   else showLogin();
@@ -501,6 +547,7 @@ function showLogin() {
 async function showApp() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-screen').style.display = 'flex';
+  applyTheme();
   await load();
 }
 
