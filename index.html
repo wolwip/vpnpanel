@@ -394,7 +394,13 @@ input:checked + .theme-slider:before { transform:translateX(16px); background:#f
       <div style="max-width:480px">
         <div class="table-wrap" style="padding:20px">
           <div class="section-title">Мониторинг</div>
-          <button class="btn btn-secondary" onclick="runMonitor()">▶ Запустить проверку сейчас</button>
+          <button class="btn btn-secondary" id="btn-run-monitor" onclick="runMonitor()">▶ Запустить проверку сейчас</button>
+          <div id="monitor-progress-wrap" style="display:none;margin-top:10px">
+            <div style="font-size:12px;color:var(--text2);margin-bottom:6px" id="monitor-progress-label">Проверяем серверы...</div>
+            <div style="background:var(--bg3);border-radius:4px;height:6px;overflow:hidden;border:1px solid var(--border)">
+              <div id="monitor-progress-bar" style="height:100%;width:0%;background:var(--accent);border-radius:4px;transition:width 0.3s ease"></div>
+            </div>
+          </div>
           <div style="margin-top:8px;font-size:12px;color:var(--text2)">Автоматическая проверка каждые 5 минут</div>
 
           <div class="section-title" style="margin-top:24px">Смена пароля</div>
@@ -1033,9 +1039,40 @@ async function deletePayment(payId) {
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
 async function runMonitor() {
+  const btn = document.getElementById('btn-run-monitor');
+  const wrap = document.getElementById('monitor-progress-wrap');
+  const bar = document.getElementById('monitor-progress-bar');
+  const label = document.getElementById('monitor-progress-label');
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Проверка...';
+  wrap.style.display = 'block';
+  bar.style.width = '0%';
+  label.textContent = 'Проверяем серверы...';
+
   await api('/api/monitor/run', { method: 'POST' });
-  toast('Проверка запущена...');
-  setTimeout(load, 8000);
+
+  const DURATION = 8000;
+  const start = Date.now();
+  const tick = () => {
+    const pct = Math.min(100, ((Date.now() - start) / DURATION) * 100);
+    bar.style.width = pct + '%';
+    if (pct < 100) {
+      requestAnimationFrame(tick);
+    }
+  };
+  requestAnimationFrame(tick);
+
+  await new Promise(r => setTimeout(r, DURATION));
+  bar.style.width = '100%';
+  label.textContent = 'Готово';
+  await load();
+
+  setTimeout(() => {
+    wrap.style.display = 'none';
+    btn.disabled = false;
+    btn.textContent = '▶ Запустить проверку сейчас';
+  }, 1200);
 }
 
 function exportCsv(type) {
