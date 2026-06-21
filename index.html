@@ -489,7 +489,7 @@ input:checked + .theme-slider:before { transform:translateX(16px); background:#f
         <div class="form-row"><label>Сумма *</label><input class="form-input" type="number" id="pay-amount" step="0.000001" placeholder="0.00"></div>
         <div class="form-row"><label>Валюта</label>
           <select class="form-input" id="pay-currency">
-            <option>USDT</option><option>USD</option><option>EUR</option><option>RUB</option>
+            <option>RUB</option><option>USDT</option><option>USD</option><option>EUR</option>
           </select>
         </div>
       </div>
@@ -976,7 +976,7 @@ function openPaymentModal(assetId) {
   // Восстанавливаем последние значения для этого актива
   const savedPay = JSON.parse(localStorage.getItem('lastpay_' + assetId) || '{}');
   document.getElementById('pay-amount').value = savedPay.amount || '';
-  document.getElementById('pay-currency').value = savedPay.currency || 'USDT';
+  document.getElementById('pay-currency').value = savedPay.currency || 'RUB';
   const now = new Date();
   now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
   document.getElementById('pay-date').value = now.toISOString().slice(0,16);
