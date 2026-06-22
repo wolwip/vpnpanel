@@ -780,9 +780,9 @@ function renderAssets(type) {
       cols = `
         <td><div class="td-name">${esc(a.name)}</div>${a.note?`<div class="td-sub">${esc(a.note)}</div>`:''}</td>
         <td>${linkedSrv?`<span style="color:var(--accent)">${esc(linkedSrv.name)}</span><div class="td-sub" style="font-family:monospace">${esc(linkedSrv.ip||'')}</div>`:'<span style="color:var(--text2)">—</span>'}</td>
-        <td>${a.panel_url?`<a href="${esc(a.panel_url)}" target="_blank" style="color:var(--accent);text-decoration:none">Открыть →</a>`:'<span style="color:var(--text2)">—</span>'}</td>
-        <td>${a.panel_login?`<span style="font-family:monospace;font-size:12px;cursor:pointer" onclick="copyText('${esc(a.panel_login)}')" title="Скопировать">${esc(a.panel_login)}</span>`:'—'}</td>
-        <td>${a.panel_pass?`<span class="pass-hidden" onclick="togglePass(this)" data-pass="${esc(a.panel_pass)}" style="cursor:pointer" title="Нажмите чтобы показать">••••••</span>`:'—'}</td>`;
+        <td>${a.panel_url?`<a href="${esc(a.panel_url)}" target="_blank" onclick="copyText('${esc(a.panel_login)}');toast('Логин скопирован')" style="color:var(--accent);text-decoration:none">Открыть →</a>`:'<span style="color:var(--text2)">—</span>'}</td>
+        <td>${a.panel_login?`<span style="font-family:monospace;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px" onclick="copyText('${esc(a.panel_login)}')" title="Скопировать логин">📋 ${esc(a.panel_login)}</span>`:'—'}</td>
+        <td>${a.panel_pass?`<span style="display:flex;align-items:center;gap:4px"><span class="pass-hidden" onclick="togglePass(this)" data-pass="${esc(a.panel_pass)}" style="cursor:pointer" title="Показать">••••••</span><span style="cursor:pointer;font-size:14px" onclick="copyText('${esc(a.panel_pass)}');toast('Пароль скопирован')" title="Скопировать пароль">📋</span></span>`:'—'}</td>`;
     } else {
       cols = `
         <td><div class="td-name">${esc(a.name)}</div>${a.ip?`<div class="td-sub" style="font-family:monospace;font-size:11px">${esc(a.ip)}</div>`:''}</td>
