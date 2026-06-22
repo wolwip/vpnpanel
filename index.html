@@ -338,7 +338,7 @@ input:checked + .theme-slider:before { transform:translateX(16px); background:#f
       </div>
       <div class="table-wrap">
         <div class="table-toolbar"><input class="search-input" type="search" placeholder="Поиск..." oninput="renderAssets('vpn')" id="search-vpn"></div>
-        <table><thead><tr><th>Название</th><th>IP / Сервер</th><th>Провайдер</th><th>Истекает</th><th>Платежи</th><th></th></tr></thead>
+        <table><thead><tr><th>Название</th><th>Сервер</th><th>Панель</th><th>Логин</th><th>Пароль</th><th></th></tr></thead>
         <tbody id="tbl-vpn"></tbody></table>
       </div>
     </div>
@@ -445,6 +445,17 @@ input:checked + .theme-slider:before { transform:translateX(16px); background:#f
       </div>
       <div class="form-row"><label>Истекает</label><input class="form-input" type="datetime-local" id="f-expires"></div>
       <div class="form-row"><label>Заметка</label><textarea class="form-input" id="f-note" placeholder="Протокол, конфиг, ссылки..."></textarea></div>
+      <div id="f-vpn-fields" style="display:none">
+        <div class="section-title">Панель управления</div>
+        <div class="form-row"><label>Сервер (привязка)</label>
+          <select class="form-input" id="f-linked-server"><option value="">— не привязан —</option></select>
+        </div>
+        <div class="form-row"><label>URL панели</label><input class="form-input" id="f-panel-url" placeholder="https://panel.example.com:2053"></div>
+        <div class="form-grid">
+          <div class="form-row"><label>Логин</label><input class="form-input" id="f-panel-login" placeholder="admin"></div>
+          <div class="form-row"><label>Пароль</label><input class="form-input" type="text" id="f-panel-pass" placeholder="пароль панели"></div>
+        </div>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-danger btn-sm" id="f-delete-btn" onclick="deleteAsset()" style="margin-right:auto;display:none">Удалить</button>
@@ -760,6 +771,14 @@ function renderAssets(type) {
         <td><span style="font-family:monospace;font-size:12px">${esc(a.domain||'—')}</span></td>
         <td>${prov?esc(prov.name):'<span style="color:var(--text2)">—</span>'}</td>
         <td>${exp}</td><td>${payStr}</td>`;
+    } else if (type === 'vpn') {
+      const linkedSrv = assets.find(s => s.id === a.linked_server_id);
+      cols = `
+        <td><div class="td-name">${esc(a.name)}</div>${a.note?`<div class="td-sub">${esc(a.note)}</div>`:''}</td>
+        <td>${linkedSrv?`<span style="color:var(--accent)">${esc(linkedSrv.name)}</span><div class="td-sub" style="font-family:monospace">${esc(linkedSrv.ip||'')}</div>`:'<span style="color:var(--text2)">—</span>'}</td>
+        <td>${a.panel_url?`<a href="${esc(a.panel_url)}" target="_blank" style="color:var(--accent);text-decoration:none">Открыть →</a>`:'<span style="color:var(--text2)">—</span>'}</td>
+        <td>${a.panel_login?`<span style="font-family:monospace;font-size:12px;cursor:pointer" onclick="copyText('${esc(a.panel_login)}')" title="Скопировать">${esc(a.panel_login)}</span>`:'—'}</td>
+        <td>${a.panel_pass?`<span class="pass-hidden" onclick="togglePass(this)" data-pass="${esc(a.panel_pass)}" style="cursor:pointer" title="Нажмите чтобы показать">••••••</span>`:'—'}</td>`;
     } else {
       cols = `
         <td><div class="td-name">${esc(a.name)}</div>${a.ip?`<div class="td-sub" style="font-family:monospace;font-size:11px">${esc(a.ip)}</div>`:''}</td>
@@ -770,7 +789,7 @@ function renderAssets(type) {
     return `<tr>
       ${cols}
       <td class="td-actions">
-        <button class="btn-icon" title="Платежи" onclick="openPaymentModal('${a.id}')">💳</button>
+        ${type !== 'vpn' ? `<button class="btn-icon" title="Платежи" onclick="openPaymentModal('\${a.id}')">💳</button>` : ''}
         <button class="btn-icon" title="Редактировать" onclick="openAssetModal('${type}','${a.id}')">✏️</button>
       </td>
     </tr>`;
@@ -885,10 +904,22 @@ function openAssetModal(type, id) {
   document.getElementById('f-expires').value = asset?.expires_at ? asset.expires_at.slice(0,16) : '';
   document.getElementById('f-delete-btn').style.display = asset ? 'inline-flex' : 'none';
 
-  // Показываем/скрываем поля мониторинга
+  // Показываем/скрываем поля мониторинга и VPN
   const showMonitor = type === 'server';
   document.getElementById('f-monitor-row').style.display = showMonitor ? 'grid' : 'none';
-  document.getElementById('f-ip-row').style.display = (type === 'server' || type === 'vpn' || type === 'cert') ? 'grid' : 'none';
+  document.getElementById('f-ip-row').style.display = (type === 'server' || type === 'cert') ? 'grid' : 'none';
+  const showVpn = type === 'vpn';
+  document.getElementById('f-vpn-fields').style.display = showVpn ? 'block' : 'none';
+  if (showVpn) {
+    document.getElementById('f-panel-url').value = asset?.panel_url || '';
+    document.getElementById('f-panel-login').value = asset?.panel_login || '';
+    document.getElementById('f-panel-pass').value = asset?.panel_pass || '';
+    const selSrv = document.getElementById('f-linked-server');
+    const servers = assets.filter(a => a.type === 'server' && !a.inactive);
+    selSrv.innerHTML = '<option value="">— не привязан —</option>' + servers.map(s =>
+      `<option value="${s.id}" ${asset?.linked_server_id===s.id?'selected':''}>${esc(s.name)} (${esc(s.ip||'')})</option>`
+    ).join('');
+  }
 
   // Провайдеры
   const sel = document.getElementById('f-provider');
@@ -913,6 +944,10 @@ async function saveAsset() {
     monitor_enabled: document.getElementById('f-monitor-enabled').checked,
     note: document.getElementById('f-note').value.trim(),
     expires_at: document.getElementById('f-expires').value || '',
+    panel_url: document.getElementById('f-panel-url')?.value?.trim() || '',
+    panel_login: document.getElementById('f-panel-login')?.value?.trim() || '',
+    panel_pass: document.getElementById('f-panel-pass')?.value?.trim() || '',
+    linked_server_id: document.getElementById('f-linked-server')?.value || '',
   };
   if (!body.name) { toast('Введите название'); return; }
   try {
@@ -1077,6 +1112,20 @@ async function runMonitor() {
 
 function exportCsv(type) {
   window.open('/api/export/' + type, '_blank');
+}
+
+function copyText(text) {
+  navigator.clipboard.writeText(text).then(() => toast('Скопировано')).catch(() => {});
+}
+
+function togglePass(el) {
+  const pass = el.dataset.pass;
+  if (el.textContent === pass) {
+    el.textContent = '••••••';
+  } else {
+    el.textContent = pass;
+    setTimeout(() => { el.textContent = '••••••'; }, 3000);
+  }
 }
 
 async function changePassword() {

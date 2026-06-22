@@ -89,6 +89,19 @@ db.exec(`
     FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE CASCADE
   );
   CREATE INDEX IF NOT EXISTS idx_monitor ON monitor_results(asset_id, checked_at DESC);
+`);
+
+// Миграции — новые поля для VPN-сервисов
+const migrations = [
+  ["assets", "panel_url", "TEXT NOT NULL DEFAULT ''"],
+  ["assets", "panel_login", "TEXT NOT NULL DEFAULT ''"],
+  ["assets", "panel_pass", "TEXT NOT NULL DEFAULT ''"],
+  ["assets", "linked_server_id", "TEXT NOT NULL DEFAULT ''"],
+];
+for (const [table, col, def] of migrations) {
+  try { db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`); }
+  catch {}
+}
   CREATE TABLE IF NOT EXISTS sessions (
     token      TEXT PRIMARY KEY,
     created_at TEXT NOT NULL
@@ -349,11 +362,13 @@ const server = createServer(async (req, res) => {
     if (!b.name || !b.type) { send(res, 400, { error: "name and type required" }); return; }
     const id = uuid(); const ts = now();
     db.prepare(`INSERT INTO assets
-      (id,type,name,provider_id,ip,domain,country,expires_at,note,monitor_port,monitor_enabled,sort_order,inactive,created_at,updated_at)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+      (id,type,name,provider_id,ip,domain,country,expires_at,note,monitor_port,monitor_enabled,sort_order,inactive,panel_url,panel_login,panel_pass,linked_server_id,created_at,updated_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
       .run(id, b.type, b.name.trim(), b.provider_id||"", b.ip||"", b.domain||"",
            b.country||"", b.expires_at||"", b.note||"",
-           b.monitor_port||22, b.monitor_enabled!==false?1:0, b.sort_order||0, 0, ts, ts);
+           b.monitor_port||22, b.monitor_enabled!==false?1:0, b.sort_order||0, 0,
+           b.panel_url||"", b.panel_login||"", b.panel_pass||"", b.linked_server_id||"",
+           ts, ts);
     send(res, 201, db.prepare("SELECT * FROM assets WHERE id=?").get(id)); return;
   }
 
@@ -364,12 +379,15 @@ const server = createServer(async (req, res) => {
       const b = await readBody(req);
       db.prepare(`UPDATE assets SET
         type=?,name=?,provider_id=?,ip=?,domain=?,country=?,expires_at=?,note=?,
-        monitor_port=?,monitor_enabled=?,sort_order=?,inactive=?,updated_at=?
+        monitor_port=?,monitor_enabled=?,sort_order=?,inactive=?,
+        panel_url=?,panel_login=?,panel_pass=?,linked_server_id=?,updated_at=?
         WHERE id=?`)
         .run(b.type, b.name||"", b.provider_id||"", b.ip||"", b.domain||"",
              b.country||"", b.expires_at||"", b.note||"",
              b.monitor_port||22, b.monitor_enabled!==false?1:0,
-             b.sort_order||0, b.inactive?1:0, now(), id);
+             b.sort_order||0, b.inactive?1:0,
+             b.panel_url||"", b.panel_login||"", b.panel_pass||"", b.linked_server_id||"",
+             now(), id);
       send(res, 200, db.prepare("SELECT * FROM assets WHERE id=?").get(id)); return;
     }
     if (method === "DELETE") {
