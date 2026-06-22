@@ -443,7 +443,7 @@ input:checked + .theme-slider:before { transform:translateX(16px); background:#f
           <label class="checkbox-row"><input type="checkbox" id="f-monitor-enabled" checked> Мониторинг включён</label>
         </div>
       </div>
-      <div class="form-row"><label>Истекает</label><input class="form-input" type="datetime-local" id="f-expires"></div>
+      <div class="form-row" id="f-expires-row"><label>Истекает</label><input class="form-input" type="datetime-local" id="f-expires"></div>
       <div class="form-row"><label>Заметка</label><textarea class="form-input" id="f-note" placeholder="Протокол, конфиг, ссылки..."></textarea></div>
       <div id="f-vpn-fields" style="display:none">
         <div class="section-title">Панель управления</div>
@@ -910,6 +910,7 @@ function openAssetModal(type, id) {
   document.getElementById('f-ip-row').style.display = (type === 'server' || type === 'cert') ? 'grid' : 'none';
   const showVpn = type === 'vpn';
   document.getElementById('f-vpn-fields').style.display = showVpn ? 'block' : 'none';
+  document.getElementById('f-expires-row').style.display = showVpn ? 'none' : 'block';
   if (showVpn) {
     document.getElementById('f-panel-url').value = asset?.panel_url || '';
     document.getElementById('f-panel-login').value = asset?.panel_login || '';

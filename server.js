@@ -102,6 +102,7 @@ for (const [table, col, def] of migrations) {
   try { db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`); }
   catch {}
 }
+db.exec(`
   CREATE TABLE IF NOT EXISTS sessions (
     token      TEXT PRIMARY KEY,
     created_at TEXT NOT NULL
