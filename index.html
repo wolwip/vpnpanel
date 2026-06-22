@@ -452,8 +452,12 @@ input:checked + .theme-slider:before { transform:translateX(16px); background:#f
         </div>
         <div class="form-row"><label>URL панели</label><input class="form-input" id="f-panel-url" placeholder="https://panel.example.com:2053"></div>
         <div class="form-grid">
-          <div class="form-row"><label>Логин</label><input class="form-input" id="f-panel-login" placeholder="admin"></div>
-          <div class="form-row"><label>Пароль</label><input class="form-input" type="text" id="f-panel-pass" placeholder="пароль панели"></div>
+          <div class="form-row"><label>Логин</label>
+            <div style="display:flex;gap:6px"><input class="form-input" type="password" id="f-panel-login" placeholder="admin"><button type="button" class="btn-icon" onclick="toggleField('f-panel-login')" title="Показать">👁</button></div>
+          </div>
+          <div class="form-row"><label>Пароль</label>
+            <div style="display:flex;gap:6px"><input class="form-input" type="password" id="f-panel-pass" placeholder="пароль панели"><button type="button" class="btn-icon" onclick="toggleField('f-panel-pass')" title="Показать">👁</button></div>
+          </div>
         </div>
       </div>
     </div>
@@ -1117,6 +1121,11 @@ function exportCsv(type) {
 
 function copyText(text) {
   navigator.clipboard.writeText(text).then(() => toast('Скопировано')).catch(() => {});
+}
+
+function toggleField(id) {
+  const el = document.getElementById(id);
+  el.type = el.type === 'password' ? 'text' : 'password';
 }
 
 function togglePass(el) {
