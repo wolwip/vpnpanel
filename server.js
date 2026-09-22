@@ -231,12 +231,27 @@ async function runExpiryNotifications() {
 setTimeout(() => { runExpiryNotifications(); setInterval(runExpiryNotifications, 12 * 60 * 60 * 1000); }, 15_000);
 
 // ─── HTTP сервер ───────────────────────────────────────────────────────────────
+import { handleRecon } from "./recon-routes.js";
 const server = createServer(async (req, res) => {
   const url    = new URL(req.url, "http://localhost");
   const method = req.method;
   const p      = url.pathname;
 
   if (method === "OPTIONS") { res.writeHead(204); res.end(); return; }
+
+  // ── recon ──
+  if (p === "/recon" && method === "GET") {
+    try {
+      const html = readFileSync(path.join(__dirname, "recon-dashboard.html"));
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Content-Length": html.length });
+      res.end(html);
+    } catch { res.writeHead(404); res.end("Not found"); }
+    return;
+  }
+  if (p.startsWith("/api/recon")) {
+    await handleRecon({ req, res, p, method, db, isAuth, send, sendTelegram });
+    return;
+  }
 
   // Статика
   if (p === "/" || p === "/index.html") {

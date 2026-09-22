@@ -5,6 +5,7 @@ WORKDIR /app
 # Копируем файлы приложения
 COPY package.json ./
 COPY server.js ./
+COPY recon.js recon-routes.js recon-dashboard.html ./
 COPY index.html ./
 
 # Создаём папку данных
